@@ -16,29 +16,20 @@ VOIDDrumEngineEditor::VOIDDrumEngineEditor(VOIDDrumEngineProcessor& p)
     addAndMakeVisible(drumKitView);
     drumKitView.setPadTriggerCallback([this](int padIndex, float velocity)
     {
-        // Trigger the hit animation on the pad grid too
         padGrid.triggerHit(padIndex, velocity);
         padGrid.setSelectedPad(padIndex);
-
-        // TODO (Agent 2 integration): send MIDI note-on to processor
-        //   processorRef.triggerPad(padIndex, velocity);
     });
 
-    // --- PadGrid setup ---
+    // --- PadGrid setup (now includes mixer controls per-pad) ---
     addAndMakeVisible(padGrid);
+    padGrid.connectToParameters(processorRef.getAPVTS());
     padGrid.setPadTriggerCallback([this](int padIndex, float velocity)
     {
-        // Trigger the hit animation on the kit view too
         drumKitView.triggerHit(padIndex, velocity);
-
-        // TODO (Agent 2 integration): send MIDI note-on to processor
-        //   processorRef.triggerPad(padIndex, velocity);
     });
 
     padGrid.setSampleDropCallback([this](int padIndex, const juce::String& sampleId)
     {
-        // TODO (Agent 3 integration): assign sample to pad
-        //   processorRef.assignSampleToPad(padIndex, sampleId);
         juce::ignoreUnused(padIndex, sampleId);
     });
 
@@ -46,17 +37,31 @@ VOIDDrumEngineEditor::VOIDDrumEngineEditor(VOIDDrumEngineProcessor& p)
     addAndMakeVisible(sampleBrowser);
     sampleBrowser.addListener(this);
 
-    // --- MixerStrip setup ---
-    addAndMakeVisible(mixerStrip);
-    mixerStrip.connectToParameters(processorRef.getAPVTS());
-    mixerStrip.setSelectedPad(selectedPad);
-
     // --- FXPanel setup ---
     addAndMakeVisible(fxPanel);
     fxPanel.setAPVTS(&processorRef.getAPVTS());
     fxPanel.setSelectedPad(selectedPad);
 
-    // Default window size matching the wireframe layout
+    // --- Master volume fader ---
+    masterFader.setSliderStyle(juce::Slider::LinearVertical);
+    masterFader.setTextBoxStyle(juce::Slider::NoTextBox, true, 0, 0);
+    masterFader.setRange(0.0, 1.0, 0.001);
+    masterFader.setValue(0.8);
+    masterFader.setColour(juce::Slider::trackColourId, juce::Colour(VoidLookAndFeel::kGhost));
+    masterFader.setColour(juce::Slider::thumbColourId, juce::Colour(VoidLookAndFeel::kTextPrimary));
+    masterFader.setColour(juce::Slider::backgroundColourId, juce::Colour(VoidLookAndFeel::kSurface));
+    addAndMakeVisible(masterFader);
+
+    masterLabel.setText("MST", juce::dontSendNotification);
+    masterLabel.setFont(VoidLookAndFeel::getMonoFontBold(9.0f));
+    masterLabel.setColour(juce::Label::textColourId, juce::Colour(VoidLookAndFeel::kAccentCyan));
+    masterLabel.setJustificationType(juce::Justification::centred);
+    addAndMakeVisible(masterLabel);
+
+    masterVolumeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+        processorRef.getAPVTS(), "master_volume", masterFader);
+
+    // Default window size
     setSize(1100, 750);
     setResizable(true, true);
     setResizeLimits(800, 600, 1920, 1080);
@@ -74,49 +79,27 @@ VOIDDrumEngineEditor::~VOIDDrumEngineEditor()
 
 void VOIDDrumEngineEditor::paint(juce::Graphics& g)
 {
-    // Void-black background
     g.fillAll(VoidLookAndFeel::voidBlack());
 
     // --- Title bar ---
     auto titleBar = getLocalBounds().removeFromTop(kTitleBarHeight).toFloat();
 
-    // Title bar background
     g.setColour(VoidLookAndFeel::surface());
     g.fillRect(titleBar);
 
-    // Title bar bottom border
     g.setColour(VoidLookAndFeel::ghost());
     g.fillRect(titleBar.getX(), titleBar.getBottom() - 1.0f, titleBar.getWidth(), 1.0f);
 
-    // Title text
     g.setFont(VoidLookAndFeel::getMonoFontBold(18.0f));
     g.setColour(VoidLookAndFeel::textPrimary());
-    g.drawText(juce::CharPointer_UTF8("\xCE\x98  V\xC3\x98ID DRUM ENGINE"),
+    g.drawText(juce::String(juce::CharPointer_UTF8("\xCE\x98")) + "  V" + juce::String(juce::CharPointer_UTF8("\xC3\x98")) + "ID DRUM ENGINE",
                titleBar.reduced(12.0f, 0.0f),
                juce::Justification::centredLeft, true);
 
-    // Version text (right side)
     g.setFont(VoidLookAndFeel::getMonoFont(11.0f));
     g.setColour(VoidLookAndFeel::textDim());
     g.drawText("v0.1.0", titleBar.reduced(12.0f, 0.0f),
                juce::Justification::centredRight, true);
-
-    // --- Section divider between kit view and pad grid ---
-    // (drawn in the gap between the two components)
-    auto contentBounds = getLocalBounds().withTrimmedTop(kTitleBarHeight);
-    float splitY = contentBounds.getY() + contentBounds.getHeight() * 0.58f;
-
-    g.setColour(VoidLookAndFeel::ghost().withAlpha(0.4f));
-    g.fillRect(contentBounds.getX() + 20.0f, splitY - 0.5f,
-               static_cast<float>(contentBounds.getWidth() - 40), 1.0f);
-
-    // Decorative Greek accent on divider
-    g.setFont(VoidLookAndFeel::getMonoFont(10.0f));
-    g.setColour(VoidLookAndFeel::textDim());
-    g.drawText(juce::CharPointer_UTF8("\xCE\xA3\xCE\xA9\xCE\x98  PAD GRID"),
-               static_cast<float>(contentBounds.getCentreX() - 60),
-               splitY - 8.0f, 120.0f, 16.0f,
-               juce::Justification::centred, false);
 }
 
 // =========================================================================
@@ -128,9 +111,6 @@ void VOIDDrumEngineEditor::resized()
     auto bounds = getLocalBounds();
     bounds.removeFromTop(kTitleBarHeight);
 
-    // Bottom: mixer strip
-    mixerStrip.setBounds(bounds.removeFromBottom(kMixerHeight));
-
     // Left: sample browser
     int browserW = juce::jmax(kBrowserWidth, bounds.getWidth() / 5);
     sampleBrowser.setBounds(bounds.removeFromLeft(browserW));
@@ -139,14 +119,19 @@ void VOIDDrumEngineEditor::resized()
     int fxW = juce::jmax(kFXPanelWidth, bounds.getWidth() / 4);
     fxPanel.setBounds(bounds.removeFromRight(fxW));
 
-    // Centre: DrumKitView (top 58%) and PadGrid (bottom 42%)
+    // Centre: DrumKitView (top 55%) and PadGrid (bottom 45%)
+    // Master fader sits in a narrow strip to the right of the pad grid
     auto centreArea = bounds;
-    int kitHeight = static_cast<int>(centreArea.getHeight() * 0.58f);
-    auto kitArea = centreArea.removeFromTop(kitHeight).reduced(4);
-    auto gridArea = centreArea.reduced(4);
+    int kitHeight = static_cast<int>(centreArea.getHeight() * 0.55f);
+    drumKitView.setBounds(centreArea.removeFromTop(kitHeight).reduced(4));
 
-    drumKitView.setBounds(kitArea);
-    padGrid.setBounds(gridArea);
+    // Master fader strip on the right of the pad grid area
+    auto gridArea = centreArea;
+    auto masterArea = gridArea.removeFromRight(32);
+    masterLabel.setBounds(masterArea.removeFromBottom(14));
+    masterFader.setBounds(masterArea.reduced(4, 4));
+
+    padGrid.setBounds(gridArea.reduced(4));
 }
 
 // =========================================================================
@@ -155,14 +140,12 @@ void VOIDDrumEngineEditor::resized()
 
 void VOIDDrumEngineEditor::samplePreviewRequested(const juce::String& sampleId)
 {
-    // TODO (Agent 2): forward to preview playback engine
     juce::ignoreUnused(sampleId);
     DBG("Preview requested: " + sampleId);
 }
 
 void VOIDDrumEngineEditor::sampleAssignRequested(const juce::String& sampleId)
 {
-    // TODO (Agent 2/3): assign sample to currently selected pad
     juce::ignoreUnused(sampleId);
     DBG("Assign to pad " + juce::String(selectedPad) + ": " + sampleId);
 }

@@ -6,7 +6,6 @@
 #include "DrumKitView.h"
 #include "PadGrid.h"
 #include "SampleBrowser.h"
-#include "MixerStrip.h"
 #include "FXPanel.h"
 
 // Forward declaration -- defined in engine/PluginProcessor.h
@@ -14,10 +13,6 @@ class VOIDDrumEngineProcessor;
 
 // =========================================================================
 // VOIDDrumEngineEditor
-//
-// Top-level editor component for the VOID Drum Engine plugin.
-// Hosts the DrumKitView (centre-top), PadGrid (centre-bottom),
-// and applies the VoidLookAndFeel globally.
 // =========================================================================
 class VOIDDrumEngineEditor : public juce::AudioProcessorEditor,
                              public SampleBrowserListener
@@ -40,14 +35,17 @@ private:
     DrumKitView     drumKitView;
     PadGrid         padGrid;
     SampleBrowser   sampleBrowser;
-    MixerStrip      mixerStrip;
     FXPanel         fxPanel;
+
+    // Master volume (was in MixerStrip, now standalone at bottom-right)
+    juce::Slider masterFader;
+    juce::Label  masterLabel;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> masterVolumeAttachment;
 
     int selectedPad = 0;
 
     // Layout constants
     static constexpr int kTitleBarHeight = 40;
-    static constexpr int kMixerHeight    = 120;
     static constexpr int kBrowserWidth   = 200;
     static constexpr int kFXPanelWidth   = 200;
 
