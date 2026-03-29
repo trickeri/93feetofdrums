@@ -23,7 +23,9 @@ SolidCompression=yes
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=admin
-DisableDirPage=yes
+DisableDirPage=no
+DirExistsWarning=no
+UsePreviousAppDir=yes
 UninstallDisplayName={#MyAppName}
 
 [Languages]
@@ -31,7 +33,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
 ; VST3 plugin bundle
-Source: "..\build\VOIDDrumEngine_artefacts\Release\VST3\VOID Drum Engine.vst3\*"; DestDir: "{commonpf}\Common Files\VST3\VOID Drum Engine.vst3"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\build\VOIDDrumEngine_artefacts\Release\VST3\VOID Drum Engine.vst3\*"; DestDir: "{app}\VOID Drum Engine.vst3"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Dirs]
 ; Create sample folder structure in AppData
@@ -46,7 +48,7 @@ Name: "{userappdata}\VOID Drum Engine\VOID_Presets\Factory"
 Name: "{userappdata}\VOID Drum Engine\VOID_Presets\User"
 
 [Messages]
-WelcomeLabel2=This will install {#MyAppName} v{#MyAppVersion} VST3 plugin on your computer.%n%nThe plugin will be installed to the standard VST3 directory:%n  C:\Program Files\Common Files\VST3\%n%nSample folders will be created at:%n  %APPDATA%\VOID Drum Engine\VOID_Samples\
+WelcomeLabel2=This will install {#MyAppName} v{#MyAppVersion} VST3 plugin on your computer.%n%nBy default the plugin installs to the standard VST3 directory. You can choose a different location on the next page.%n%nSample folders will be created at:%n  %APPDATA%\VOID Drum Engine\VOID_Samples\
 
 [UninstallDelete]
 ; Clean up empty sample dirs on uninstall (won't delete user files)

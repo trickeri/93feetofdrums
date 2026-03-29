@@ -53,6 +53,8 @@ Then copy `build\VOIDDrumEngine_artefacts\Release\VST3\VOID Drum Engine.vst3` to
 2. Open your DAW and scan for new plugins
 3. Load **VOID Drum Engine** on a track — samples appear automatically
 
+See [docs/SAMPLE_PACK_GUIDE.md](docs/SAMPLE_PACK_GUIDE.md) for full details on folder structure, hot-reload, creating sample packs, and the kit preset format.
+
 ## Prerequisites
 
 - Visual Studio 2022 with "Desktop development with C++" workload
