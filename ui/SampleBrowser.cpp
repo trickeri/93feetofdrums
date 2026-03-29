@@ -339,6 +339,8 @@ SampleBrowser::SampleBrowser()
 
 SampleBrowser::~SampleBrowser()
 {
+    if (auto* reg = dynamic_cast<void_drum::SampleRegistry*>(registry))
+        reg->removeListener(this);
     stopTimer();
 }
 
@@ -348,7 +350,22 @@ SampleBrowser::~SampleBrowser()
 
 void SampleBrowser::setSampleRegistry(void_drum::ISampleRegistry* reg)
 {
+    // Unregister from old registry
+    if (auto* oldReg = dynamic_cast<void_drum::SampleRegistry*>(registry))
+        oldReg->removeListener(this);
+
     registry = reg;
+
+    // Register with new registry for auto-refresh
+    if (auto* newReg = dynamic_cast<void_drum::SampleRegistry*>(registry))
+        newReg->addListener(this);
+
+    refreshFromRegistry();
+}
+
+void SampleBrowser::sampleRegistryUpdated()
+{
+    // Called on message thread when the scanner rebuilds the registry
     refreshFromRegistry();
 }
 

@@ -36,6 +36,8 @@ VOIDDrumEngineEditor::VOIDDrumEngineEditor(VOIDDrumEngineProcessor& p)
     // --- SampleBrowser setup ---
     addAndMakeVisible(sampleBrowser);
     sampleBrowser.addListener(this);
+    sampleBrowser.setSampleRegistry(&processorRef.getSampleRegistry());
+    sampleBrowser.refreshFromRegistry();
 
     // --- FXPanel setup ---
     addAndMakeVisible(fxPanel);

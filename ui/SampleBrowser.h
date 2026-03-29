@@ -2,6 +2,7 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "../engine/interfaces/ISampleRegistry.h"
+#include "../engine/SampleRegistry.h"
 #include "VoidLookAndFeel.h"
 #include "WaveformDisplay.h"
 #include <functional>
@@ -47,7 +48,8 @@ public:
 // =========================================================================
 class SampleBrowser : public juce::Component,
                       public juce::DragAndDropContainer,
-                      public juce::Timer
+                      public juce::Timer,
+                      public void_drum::SampleRegistryListener
 {
 public:
     SampleBrowser();
@@ -74,6 +76,9 @@ public:
 
     // -- Timer (for scanner pulse animation) ---------------------------------
     void timerCallback() override;
+
+    // -- SampleRegistryListener (auto-refresh on scanner update) -------------
+    void sampleRegistryUpdated() override;
 
 private:
     // -- Internal types ------------------------------------------------------

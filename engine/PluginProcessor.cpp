@@ -135,6 +135,23 @@ VOIDDrumEngineProcessor::VOIDDrumEngineProcessor()
 
     // Construct HostIntegration (Agent 6) after APVTS and MIDIMapper are ready
     hostIntegration = std::make_unique<void_drum::HostIntegration>(*this, apvts, midiMapper);
+
+    // Set up sample folder scanning
+    auto samplesDir = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
+                          .getChildFile("VOID Drum Engine")
+                          .getChildFile("VOID_Samples");
+    if (!samplesDir.isDirectory())
+        samplesDir.createDirectory();
+
+    // Set up registry cache file for fast startup
+    auto cacheFile = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
+                         .getChildFile("VOID Drum Engine")
+                         .getChildFile("registry_cache.json");
+    sampleRegistry.setCacheFile(cacheFile);
+    sampleRegistry.loadCache();
+
+    // Start scanning
+    folderScanner.setRootDirectory(samplesDir);
 }
 
 VOIDDrumEngineProcessor::~VOIDDrumEngineProcessor() = default;

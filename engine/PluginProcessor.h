@@ -9,6 +9,8 @@
 #include "MixBus.h"
 #include "MIDIMapper.h"
 #include "HostIntegration.h"
+#include "SampleRegistry.h"
+#include "FolderScanner.h"
 #include <array>
 #include <memory>
 
@@ -90,6 +92,9 @@ public:
     void_drum::HostIntegration&       getHostIntegration()       { return *hostIntegration; }
     const void_drum::HostIntegration& getHostIntegration() const { return *hostIntegration; }
 
+    void_drum::SampleRegistry&  getSampleRegistry()  { return sampleRegistry; }
+    void_drum::FolderScanner&   getFolderScanner()   { return folderScanner; }
+
 private:
     // Builds the full parameter layout for all 16 pads + master.
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
@@ -134,6 +139,10 @@ private:
     // -- MIDI mapping (protected by atomic swap via simple copy) ---------------
     void_drum::MIDIMapping midiMapping;
     mutable std::mutex midiMappingMutex;
+
+    // -- Sample Registry & Folder Scanner (hot-reload sample folder) -----------
+    void_drum::SampleRegistry sampleRegistry;
+    void_drum::FolderScanner  folderScanner { sampleRegistry };
 
     // -- MIDI Mapper (Agent 6: full-featured mapping with learn, CC, curves) --
     void_drum::MIDIMapper midiMapper;
