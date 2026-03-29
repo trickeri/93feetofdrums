@@ -43,12 +43,12 @@ public:
     // -- Monospace font helper ----------------------------------------------
     static juce::Font getMonoFont(float height)
     {
-        return juce::Font(juce::FontOptions(juce::Font::getDefaultMonospacedFontName(), height, juce::Font::plain));
+        return juce::Font(juce::Font::getDefaultMonospacedFontName(), height, juce::Font::plain);
     }
 
     static juce::Font getMonoFontBold(float height)
     {
-        return juce::Font(juce::FontOptions(juce::Font::getDefaultMonospacedFontName(), height, juce::Font::bold));
+        return juce::Font(juce::Font::getDefaultMonospacedFontName(), height, juce::Font::bold);
     }
 
     VoidLookAndFeel();

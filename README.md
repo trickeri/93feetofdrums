@@ -14,24 +14,51 @@ Built by **93feetofdrums** using JUCE 7+ / C++17.
 - **DAW integration** -- every parameter is automatable, full state save/restore
 - **Kit presets** stored as portable JSON files
 
-## Building
+## Quick Start (Windows)
 
-### Prerequisites
+### Option 1: PowerShell (easiest)
 
-- CMake 3.22+
-- C++17 compiler (MSVC 2019+, Clang 12+, GCC 10+)
-- Git (JUCE is fetched automatically via CMake FetchContent)
+```powershell
+# Build the plugin
+.\build.ps1
 
-### Build steps
+# Install to system VST3 folder (requires admin)
+.\install.ps1
+
+# Or install to user folder (no admin needed)
+.\install.ps1 -UserOnly
+```
+
+### Option 2: Manual build
 
 ```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Release
+# Requires Visual Studio 2022 with C++ workload
+cmake -S . -B build -G "Visual Studio 17 2022" -A x64
 cmake --build build --config Release --parallel
 ```
 
-The VST3 plugin will be output under `build/`.
+Then copy `build\VOIDDrumEngine_artefacts\Release\VST3\VOID Drum Engine.vst3` to `C:\Program Files\Common Files\VST3\`.
 
-## Project structure
+### Option 3: Installer (for distribution)
+
+1. Build the plugin first (Option 1 or 2)
+2. Install [Inno Setup 6](https://jrsoftware.org/isdl.php)
+3. Run: `iscc installer\installer.iss`
+4. Distributable installer appears in `dist\`
+
+## After Installation
+
+1. Drop your `.wav` / `.flac` / `.ogg` / `.aiff` samples into the subfolders at:
+   `%APPDATA%\VOID Drum Engine\VOID_Samples\` (kicks, snares, hats, percs, toms, fx, user)
+2. Open your DAW and scan for new plugins
+3. Load **VOID Drum Engine** on a track — samples appear automatically
+
+## Prerequisites
+
+- Visual Studio 2022 with "Desktop development with C++" workload
+- Git (JUCE 7 is fetched automatically via CMake FetchContent)
+
+## Project Structure
 
 ```
 engine/              C++ audio engine (processor, DSP, interfaces)
@@ -39,6 +66,7 @@ engine/interfaces/   Shared contract headers between subsystems
 ui/                  Plugin editor and UI components
 samples/             Sample drop-folder (subfolders = categories)
 presets/             Kit preset JSON files (.voidkit)
+installer/           Inno Setup installer script
 docs/                Documentation and contributor guides
 ```
 

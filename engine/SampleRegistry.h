@@ -3,6 +3,7 @@
 #include "interfaces/ISampleRegistry.h"
 #include <juce_audio_formats/juce_audio_formats.h>
 #include <juce_core/juce_core.h>
+#include <juce_events/juce_events.h>
 #include <map>
 #include <vector>
 
@@ -76,7 +77,7 @@ public:
 private:
     /** Build a SampleEntry from a file, using cache if modification time matches. */
     SampleEntry buildEntry(const juce::File& rootDir,
-                           const juce::File& audioFile) const;
+                           const juce::File& audioFile);
 
     /** Derive the category from the top-level subfolder relative to root. */
     static juce::String deriveCategory(const juce::File& rootDir,

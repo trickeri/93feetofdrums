@@ -128,7 +128,7 @@ void SampleRegistry::rebuildFromFiles(const juce::File& rootDir,
 // =========================================================================
 
 SampleEntry SampleRegistry::buildEntry(const juce::File& rootDir,
-                                       const juce::File& audioFile) const
+                                       const juce::File& audioFile)
 {
     auto relativePath = audioFile.getRelativePathFrom(rootDir);
     // Normalise path separators to forward slash for portability
@@ -168,7 +168,7 @@ SampleEntry SampleRegistry::buildEntry(const juce::File& rootDir,
     }
 
     // Generate waveform cache
-    entry.waveformCache = generateWaveformCache(audioFile, const_cast<juce::AudioFormatManager&>(formatManager));
+    entry.waveformCache = generateWaveformCache(audioFile, formatManager);
 
     // Store in the metadata cache
     {

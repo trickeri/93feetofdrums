@@ -157,7 +157,7 @@ void PresetBrowserUI::paintListBoxItem(int rowNumber, juce::Graphics& g,
     auto tagArea = juce::Rectangle<int>(4, 0, 60, height);
     g.setColour(entry.isFactory ? juce::Colour(colTextDim)
                                 : juce::Colour(colAccentCyan));
-    g.setFont(juce::FontOptions(10.0f));
+    g.setFont(juce::Font(10.0f));
     g.drawText(entry.isFactory ? "FACTORY" : "USER",
                tagArea, juce::Justification::centredLeft, false);
 
@@ -165,7 +165,7 @@ void PresetBrowserUI::paintListBoxItem(int rowNumber, juce::Graphics& g,
     auto nameArea = juce::Rectangle<int>(68, 0, width - 180, height);
     g.setColour(rowIsSelected ? juce::Colour(colAccentCyan)
                               : juce::Colour(colTextPrimary));
-    g.setFont(juce::FontOptions(14.0f));
+    g.setFont(juce::Font(14.0f));
     g.drawText(entry.name, nameArea, juce::Justification::centredLeft, true);
 
     // Author
@@ -173,14 +173,14 @@ void PresetBrowserUI::paintListBoxItem(int rowNumber, juce::Graphics& g,
     {
         auto authorArea = juce::Rectangle<int>(width - 160, 0, 100, height);
         g.setColour(juce::Colour(colTextDim));
-        g.setFont(juce::FontOptions(11.0f));
+        g.setFont(juce::Font(11.0f));
         g.drawText(entry.author, authorArea, juce::Justification::centredLeft, true);
     }
 
     // Pad count indicator
     auto padArea = juce::Rectangle<int>(width - 50, 0, 44, height);
     g.setColour(juce::Colour(colTextDim));
-    g.setFont(juce::FontOptions(10.0f));
+    g.setFont(juce::Font(10.0f));
     g.drawText(juce::String(entry.padCount) + "p",
                padArea, juce::Justification::centredRight, false);
 
@@ -340,14 +340,14 @@ void PresetBrowserUI::paint(juce::Graphics& g)
     g.fillRect(titleBar);
 
     g.setColour(juce::Colour(colTextPrimary));
-    g.setFont(juce::FontOptions(16.0f));
+    g.setFont(juce::Font(16.0f));
     g.drawText(juce::CharPointer_UTF8("\xce\xa3  PRESET BROWSER"),
                titleBar.reduced(12, 0),
                juce::Justification::centredLeft, false);
 
     // Section labels (drawn above the list area)
     auto headerArea = bounds.removeFromTop(20);
-    g.setFont(juce::FontOptions(10.0f));
+    g.setFont(juce::Font(10.0f));
     g.setColour(juce::Colour(colTextDim));
     g.drawText("TAG", headerArea.withX(bounds.getX() + 4).withWidth(60),
                juce::Justification::centredLeft, false);

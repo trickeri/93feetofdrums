@@ -203,7 +203,7 @@ void FXPanel::setSelectedPad(int padIndex)
 
     // Update header
     juce::String padNum = juce::String(currentPad + 1).paddedLeft('0', 2);
-    headerLabel.setText(juce::CharPointer_UTF8("\xce\xa3") + juce::String(" FX  PAD ") + padNum,
+    headerLabel.setText(juce::String(juce::CharPointer_UTF8("\xce\xa3")) + " FX  PAD " + padNum,
                         juce::dontSendNotification);
 
     rebuildAttachments();
