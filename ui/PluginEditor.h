@@ -15,6 +15,7 @@ class VOIDDrumEngineProcessor;
 // VOIDDrumEngineEditor
 // =========================================================================
 class VOIDDrumEngineEditor : public juce::AudioProcessorEditor,
+                             public juce::DragAndDropContainer,
                              public SampleBrowserListener
 {
 public:

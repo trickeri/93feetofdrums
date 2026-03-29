@@ -47,7 +47,6 @@ public:
 // SampleBrowser component
 // =========================================================================
 class SampleBrowser : public juce::Component,
-                      public juce::DragAndDropContainer,
                       public juce::Timer,
                       public void_drum::SampleRegistryListener
 {
