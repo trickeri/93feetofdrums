@@ -65,13 +65,6 @@ void VoidLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y,
     g.strokePath(valueArc, juce::PathStrokeType(lineThickness, juce::PathStrokeType::curved,
                                                   juce::PathStrokeType::rounded));
 
-    // Indicator dot at current position
-    auto dotRadius = 3.0f;
-    auto thumbX = centreX + arcRadius * std::cos(toAngle - juce::MathConstants<float>::halfPi);
-    auto thumbY = centreY + arcRadius * std::sin(toAngle - juce::MathConstants<float>::halfPi);
-    g.setColour(accentCyan());
-    g.fillEllipse(thumbX - dotRadius, thumbY - dotRadius, dotRadius * 2.0f, dotRadius * 2.0f);
-
     // Centre value readout
     auto valueStr = juce::String(slider.getValue(), 1);
     g.setFont(getMonoFont(radius * 0.5f));

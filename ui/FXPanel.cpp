@@ -49,12 +49,6 @@ void VoidKnob::paint(juce::Graphics& g)
     g.setColour(VoidLookAndFeel::accentCyan());
     g.strokePath(valueArc, juce::PathStrokeType(2.5f));
 
-    // Indicator dot at current position
-    float dotX = cx + radius * std::cos(valueAngle);
-    float dotY = cy + radius * std::sin(valueAngle);
-    g.setColour(VoidLookAndFeel::textPrimary());
-    g.fillEllipse(dotX - 2.5f, dotY - 2.5f, 5.0f, 5.0f);
-
     // Value readout below the knob in monospace
     auto valueBounds = sliderBounds.translated(0, sliderBounds.getHeight() * 0.3f);
     g.setFont(VoidLookAndFeel::getMonoFont(9.0f));
