@@ -26,11 +26,13 @@ VOIDDrumEngineEditor::VOIDDrumEngineEditor(VOIDDrumEngineProcessor& p)
     padGrid.setPadTriggerCallback([this](int padIndex, float velocity)
     {
         drumKitView.triggerHit(padIndex, velocity);
+        selectedPad = padIndex;
+        fxPanel.setSelectedPad(padIndex);
     });
 
     padGrid.setSampleDropCallback([this](int padIndex, const juce::String& sampleId)
     {
-        juce::ignoreUnused(padIndex, sampleId);
+        loadSampleToPad(padIndex, sampleId);
     });
 
     // --- SampleBrowser setup ---
@@ -148,6 +150,27 @@ void VOIDDrumEngineEditor::samplePreviewRequested(const juce::String& sampleId)
 
 void VOIDDrumEngineEditor::sampleAssignRequested(const juce::String& sampleId)
 {
-    juce::ignoreUnused(sampleId);
-    DBG("Assign to pad " + juce::String(selectedPad) + ": " + sampleId);
+    // Double-click in browser: load sample to currently selected pad
+    loadSampleToPad(padGrid.getSelectedPad(), sampleId);
+}
+
+void VOIDDrumEngineEditor::loadSampleToPad(int padIndex, const juce::String& sampleId)
+{
+    // Strip the "voidsample:" prefix if present
+    auto cleanId = sampleId.startsWith("voidsample:") ? sampleId.fromFirstOccurrenceOf("voidsample:", false, false) : sampleId;
+
+    // Look up the sample in the registry to get the absolute path
+    auto* entry = processorRef.getSampleRegistry().findSample(cleanId);
+    if (entry != nullptr)
+    {
+        processorRef.loadSampleForPad(padIndex, entry->absolutePath, cleanId);
+        padGrid.setPadInfo(padIndex, entry->displayName, entry->category, -1);
+
+        // Update FX panel if this is the selected pad
+        if (padIndex == padGrid.getSelectedPad())
+        {
+            fxPanel.setSelectedPad(padIndex);
+            fxPanel.setWaveformData(entry->waveformCache);
+        }
+    }
 }

@@ -43,6 +43,8 @@ private:
     juce::Label  masterLabel;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> masterVolumeAttachment;
 
+    void loadSampleToPad(int padIndex, const juce::String& sampleId);
+
     int selectedPad = 0;
 
     // Layout constants

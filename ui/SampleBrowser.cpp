@@ -250,11 +250,28 @@ void SampleBrowser::BrowserList::mouseDrag(const juce::MouseEvent& e)
         auto& sample = browser.filteredCategories[static_cast<size_t>(browser.selectedCategoryIdx)]
                            .samples[static_cast<size_t>(browser.selectedSampleIdx)];
 
-        // Use the sample ID as the drag description so the pad grid can identify it.
         auto desc = browser.getDragDescriptionForSample(sample.id);
         if (auto* dndContainer = juce::DragAndDropContainer::findParentDragContainerFor(this))
         {
-            dndContainer->startDragging(desc, this, juce::ScaledImage(), true);
+            // Create a small drag image showing the sample name
+            auto dragText = sample.displayName;
+            auto font = VoidLookAndFeel::getMonoFont(12.0f);
+            int textW = static_cast<int>(font.getStringWidthFloat(dragText)) + 16;
+            int textH = 22;
+
+            juce::Image dragImage(juce::Image::ARGB, textW, textH, true);
+            {
+                juce::Graphics g(dragImage);
+                g.setColour(juce::Colour(VoidLookAndFeel::kSurfaceRaised).withAlpha(0.9f));
+                g.fillRect(0, 0, textW, textH);
+                g.setColour(VoidLookAndFeel::accentCyan());
+                g.drawRect(0, 0, textW, textH, 1);
+                g.setFont(font);
+                g.setColour(VoidLookAndFeel::textPrimary());
+                g.drawText(dragText, 4, 0, textW - 8, textH, juce::Justification::centredLeft, true);
+            }
+
+            dndContainer->startDragging(desc, this, juce::ScaledImage(dragImage), false);
         }
     }
 }
