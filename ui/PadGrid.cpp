@@ -204,20 +204,20 @@ void PadCell::resized()
 {
     auto fullBounds = getLocalBounds();
     float controlsWidth = fullBounds.getWidth() * 0.28f;
-    auto ctrlArea = fullBounds.withTrimmedLeft(fullBounds.getWidth() - static_cast<int>(controlsWidth)).reduced(2);
+    auto ctrlArea = fullBounds.withTrimmedLeft(fullBounds.getWidth() - static_cast<int>(controlsWidth)).reduced(1, 2);
 
-    // Pan knob at top of controls
-    int knobH = juce::jmin(ctrlArea.getWidth(), ctrlArea.getHeight() / 4);
-    auto panArea = ctrlArea.removeFromTop(knobH);
-    panKnob.setBounds(panArea.withSizeKeepingCentre(knobH, knobH));
+    // Pan knob at top — compact, just wide enough
+    int knobSize = juce::jmin(ctrlArea.getWidth(), juce::jmax(18, ctrlArea.getHeight() / 6));
+    auto panArea = ctrlArea.removeFromTop(knobSize);
+    panKnob.setBounds(panArea.withSizeKeepingCentre(knobSize, knobSize));
 
-    // M/S buttons at bottom
-    auto btnRow = ctrlArea.removeFromBottom(juce::jmin(16, ctrlArea.getHeight() / 4));
-    muteButton.setBounds(btnRow.removeFromLeft(btnRow.getWidth() / 2).reduced(1));
-    soloButton.setBounds(btnRow.reduced(1));
+    // M/S buttons at bottom — thin row
+    auto btnRow = ctrlArea.removeFromBottom(juce::jmin(14, ctrlArea.getHeight() / 5));
+    muteButton.setBounds(btnRow.removeFromLeft(btnRow.getWidth() / 2));
+    soloButton.setBounds(btnRow);
 
-    // Volume fader fills the remaining vertical space
-    volumeFader.setBounds(ctrlArea.reduced(2, 1));
+    // Volume fader fills all remaining vertical space
+    volumeFader.setBounds(ctrlArea.reduced(1, 0));
 }
 
 // =========================================================================
