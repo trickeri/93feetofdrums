@@ -80,6 +80,9 @@ public:
     /** Connect to the plugin's APVTS. Must be called once after construction. */
     void setAPVTS(juce::AudioProcessorValueTreeState* apvts);
 
+    /** Callback for when waveform markers are dragged. Set by the editor. */
+    std::function<void(int padIndex, float startNorm, float endNorm)> onMarkersDragged;
+
     /** Switch to display/control a different pad's FX. 0-based index. */
     void setSelectedPad(int padIndex);
 

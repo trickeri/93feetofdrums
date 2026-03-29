@@ -28,6 +28,7 @@ public:
 
     void paint(juce::Graphics& g) override;
     void resized() override;
+    void mouseDown(const juce::MouseEvent& e) override;
 
     // Expose for animation timer
     void decayHit();

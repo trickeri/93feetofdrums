@@ -179,6 +179,11 @@ FXPanel::FXPanel()
     waveformDisplay.setMarkersEnabled(true);
     waveformDisplay.setDrawGrid(true);
     waveformDisplay.setFilled(true);
+    waveformDisplay.onMarkersChanged = [this](float startNorm, float endNorm)
+    {
+        if (onMarkersDragged)
+            onMarkersDragged(currentPad, startNorm, endNorm);
+    };
     addAndMakeVisible(waveformDisplay);
 }
 

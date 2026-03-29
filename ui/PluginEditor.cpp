@@ -1,6 +1,15 @@
 #include "PluginEditor.h"
 #include "../engine/PluginProcessor.h"
 
+static void editorLog(const juce::String& msg)
+{
+    auto logFile = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
+                       .getChildFile("VOID Drum Engine")
+                       .getChildFile("debug_log.txt");
+    logFile.appendText("[EDITOR] " + msg + "\n", false, false, nullptr);
+}
+
+
 // =========================================================================
 // Construction
 // =========================================================================
@@ -16,8 +25,10 @@ VOIDDrumEngineEditor::VOIDDrumEngineEditor(VOIDDrumEngineProcessor& p)
     addAndMakeVisible(drumKitView);
     drumKitView.setPadTriggerCallback([this](int padIndex, float velocity)
     {
+        editorLog("DrumKitView trigger: pad=" + juce::String(padIndex) + " vel=" + juce::String(velocity));
         padGrid.triggerHit(padIndex, velocity);
         padGrid.setSelectedPad(padIndex);
+        processorRef.triggerPad(padIndex, velocity);
     });
 
     // --- PadGrid setup (now includes mixer controls per-pad) ---
@@ -25,9 +36,11 @@ VOIDDrumEngineEditor::VOIDDrumEngineEditor(VOIDDrumEngineProcessor& p)
     padGrid.connectToParameters(processorRef.getAPVTS());
     padGrid.setPadTriggerCallback([this](int padIndex, float velocity)
     {
+        editorLog("PadGrid trigger: pad=" + juce::String(padIndex) + " vel=" + juce::String(velocity));
         drumKitView.triggerHit(padIndex, velocity);
         selectedPad = padIndex;
         fxPanel.setSelectedPad(padIndex);
+        processorRef.triggerPad(padIndex, velocity);
     });
 
     padGrid.setSampleDropCallback([this](int padIndex, const juce::String& sampleId)
@@ -45,6 +58,10 @@ VOIDDrumEngineEditor::VOIDDrumEngineEditor(VOIDDrumEngineProcessor& p)
     addAndMakeVisible(fxPanel);
     fxPanel.setAPVTS(&processorRef.getAPVTS());
     fxPanel.setSelectedPad(selectedPad);
+    fxPanel.onMarkersDragged = [this](int padIndex, float startNorm, float endNorm)
+    {
+        processorRef.setPadSampleRange(padIndex, startNorm, endNorm);
+    };
 
     // --- Master volume fader ---
     masterFader.setSliderStyle(juce::Slider::LinearVertical);
@@ -156,13 +173,18 @@ void VOIDDrumEngineEditor::sampleAssignRequested(const juce::String& sampleId)
 
 void VOIDDrumEngineEditor::loadSampleToPad(int padIndex, const juce::String& sampleId)
 {
+    editorLog("loadSampleToPad: pad=" + juce::String(padIndex) + " sampleId=" + sampleId);
+
     // Strip the "voidsample:" prefix if present
     auto cleanId = sampleId.startsWith("voidsample:") ? sampleId.fromFirstOccurrenceOf("voidsample:", false, false) : sampleId;
+
+    editorLog("loadSampleToPad: cleanId=" + cleanId);
 
     // Look up the sample in the registry to get the absolute path
     auto* entry = processorRef.getSampleRegistry().findSample(cleanId);
     if (entry != nullptr)
     {
+        editorLog("loadSampleToPad: found entry, path=" + entry->absolutePath);
         processorRef.loadSampleForPad(padIndex, entry->absolutePath, cleanId);
         padGrid.setPadInfo(padIndex, entry->displayName, entry->category, -1);
 
@@ -172,5 +194,9 @@ void VOIDDrumEngineEditor::loadSampleToPad(int padIndex, const juce::String& sam
             fxPanel.setSelectedPad(padIndex);
             fxPanel.setWaveformData(entry->waveformCache);
         }
+    }
+    else
+    {
+        editorLog("loadSampleToPad: SAMPLE NOT FOUND in registry for cleanId=" + cleanId);
     }
 }

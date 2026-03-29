@@ -3,6 +3,19 @@
 #include "interfaces/IPadState.h"
 #include "interfaces/IMIDIMapping.h"
 #include <cmath>
+// =========================================================================
+// Diagnostic logging — direct file append per call (no statics, DLL-safe)
+// Writes to %APPDATA%/VOID Drum Engine/debug_log.txt
+// =========================================================================
+static void voidLogWrite(const juce::String& msg)
+{
+    auto logFile = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
+                       .getChildFile("VOID Drum Engine")
+                       .getChildFile("debug_log.txt");
+    logFile.appendText(msg + "\n", false, false, nullptr);
+}
+
+#define VOID_LOG(msg) voidLogWrite(msg)
 
 // =========================================================================
 // Parameter layout helpers
@@ -110,6 +123,8 @@ VOIDDrumEngineProcessor::VOIDDrumEngineProcessor()
       apvts(*this, nullptr, "VOID_PARAMETERS", createParameterLayout()),
       midiMapping(void_drum::createDefaultMIDIMapping())
 {
+    VOID_LOG("=== VOID Drum Engine CONSTRUCTOR called ===");
+
     // Cache raw parameter pointers for real-time access (no string lookups)
     for (int i = 0; i < void_drum::NUM_PADS; ++i)
     {
@@ -125,12 +140,14 @@ VOIDDrumEngineProcessor::VOIDDrumEngineProcessor()
     }
     masterVolumeParam = apvts.getRawParameterValue("master_volume");
 
-    // Initialise choke groups, mute, solo atomics
+    // Initialise choke groups, mute, solo, sample range atomics
     for (int i = 0; i < void_drum::NUM_PADS; ++i)
     {
         chokeGroups[static_cast<size_t>(i)].store(void_drum::CHOKE_GROUP_NONE, std::memory_order_relaxed);
         mutePad[static_cast<size_t>(i)].store(false, std::memory_order_relaxed);
         soloPad[static_cast<size_t>(i)].store(false, std::memory_order_relaxed);
+        padSampleStart[static_cast<size_t>(i)].store(0.0f, std::memory_order_relaxed);
+        padSampleEnd[static_cast<size_t>(i)].store(1.0f, std::memory_order_relaxed);
     }
 
     // Construct HostIntegration (Agent 6) after APVTS and MIDIMapper are ready
@@ -237,6 +254,9 @@ void_drum::PadBank VOIDDrumEngineProcessor::getPadStates() const
 void VOIDDrumEngineProcessor::loadSampleForPad(int padIndex, const juce::String& absolutePath,
                                                  const juce::String& sampleId)
 {
+    VOID_LOG("[loadSampleForPad] pad=" + juce::String(padIndex)
+             + " path=" + absolutePath
+             + " id=" + sampleId);
     sampleLoader.loadSampleForPad(padIndex, absolutePath, sampleId);
 }
 
@@ -257,17 +277,69 @@ void_drum::MIDIMapping VOIDDrumEngineProcessor::getMIDIMapping() const
 }
 
 // =========================================================================
+// Per-pad sample start/end range
+// =========================================================================
+
+void VOIDDrumEngineProcessor::setPadSampleRange(int padIndex, float startNorm, float endNorm)
+{
+    if (padIndex >= 0 && padIndex < void_drum::NUM_PADS)
+    {
+        padSampleStart[static_cast<size_t>(padIndex)].store(startNorm, std::memory_order_relaxed);
+        padSampleEnd[static_cast<size_t>(padIndex)].store(endNorm, std::memory_order_relaxed);
+    }
+}
+
+// =========================================================================
+// UI pad trigger (lock-free queue for audio thread)
+// =========================================================================
+
+void VOIDDrumEngineProcessor::triggerPad(int padIndex, float velocity)
+{
+    VOID_LOG("[triggerPad] padIndex=" + juce::String(padIndex) + " velocity=" + juce::String(velocity)
+             + " fifoReady=" + juce::String(uiTriggerFifo.getNumReady())
+             + " fifoFree=" + juce::String(uiTriggerFifo.getFreeSpace()));
+
+    const auto scope = uiTriggerFifo.write(1);
+    if (scope.blockSize1 > 0)
+    {
+        uiTriggerBuffer[static_cast<size_t>(scope.startIndex1)] = { padIndex, velocity };
+        VOID_LOG("[triggerPad] wrote to FIFO block1 idx=" + juce::String(scope.startIndex1));
+    }
+    else if (scope.blockSize2 > 0)
+    {
+        uiTriggerBuffer[static_cast<size_t>(scope.startIndex2)] = { padIndex, velocity };
+        VOID_LOG("[triggerPad] wrote to FIFO block2 idx=" + juce::String(scope.startIndex2));
+    }
+    else
+    {
+        VOID_LOG("[triggerPad] FIFO FULL - event dropped!");
+    }
+}
+
+// =========================================================================
 // MIDI event handling
 // =========================================================================
 
 void VOIDDrumEngineProcessor::handleNoteOn(int padIndex, float velocity)
 {
+    VOID_LOG("[handleNoteOn] padIndex=" + juce::String(padIndex) + " velocity=" + juce::String(velocity));
+
     if (padIndex < 0 || padIndex >= void_drum::NUM_PADS)
+    {
+        VOID_LOG("[handleNoteOn] REJECTED: padIndex out of range");
         return;
+    }
 
     auto sample = sampleLoader.getSampleForPad(padIndex);
     if (sample == nullptr)
+    {
+        VOID_LOG("[handleNoteOn] REJECTED: no sample loaded for pad " + juce::String(padIndex));
         return;
+    }
+
+    VOID_LOG("[handleNoteOn] sample found: id=" + sample->sampleId
+             + " numSamples=" + juce::String(sample->numSamples)
+             + " numChannels=" + juce::String(sample->numChannels));
 
     // Read pitch from APVTS
     const float pitch = padParamCache[static_cast<size_t>(padIndex)].pitch->load(std::memory_order_relaxed);
@@ -286,8 +358,28 @@ void VOIDDrumEngineProcessor::handleNoteOn(int padIndex, float velocity)
         }
     }
 
-    voiceAllocator.triggerVoice(padIndex, std::move(sample), velocity, pitch,
+    auto* voice = voiceAllocator.triggerVoice(padIndex, std::move(sample), velocity, pitch,
                                 chokeGroup, /*oneShot=*/true);
+    if (voice)
+    {
+        // Apply sample start/end positions from markers
+        float startNorm = padSampleStart[static_cast<size_t>(padIndex)].load(std::memory_order_relaxed);
+        float endNorm   = padSampleEnd[static_cast<size_t>(padIndex)].load(std::memory_order_relaxed);
+        if (voice->sample != nullptr)
+        {
+            if (startNorm > 0.0f)
+                voice->samplePosition = static_cast<double>(startNorm) * voice->sample->numSamples;
+            if (endNorm < 1.0f)
+                voice->sampleEndPos = static_cast<int>(endNorm * voice->sample->numSamples);
+        }
+
+        VOID_LOG("[handleNoteOn] voice allocated OK, active=" + juce::String((int)voice->active)
+                 + " playbackRate=" + juce::String(voice->playbackRate)
+                 + " startPos=" + juce::String(voice->samplePosition)
+                 + " activeVoices=" + juce::String(voiceAllocator.getActiveVoiceCount()));
+    }
+    else
+        VOID_LOG("[handleNoteOn] voice allocation FAILED!");
 }
 
 void VOIDDrumEngineProcessor::handleNoteOff(int /*padIndex*/)
@@ -305,6 +397,14 @@ void VOIDDrumEngineProcessor::processBlock(juce::AudioBuffer<float>& buffer,
 {
     juce::ScopedNoDenormals noDenormals;
 
+    static bool firstBlock = true;
+    if (firstBlock)
+    {
+        VOID_LOG("[processBlock] FIRST CALL - audio thread running, sampleRate="
+                 + juce::String(getSampleRate()) + " blockSize=" + juce::String(buffer.getNumSamples()));
+        firstBlock = false;
+    }
+
     juce::ignoreUnused(getTotalNumOutputChannels());
     const int numSamples = buffer.getNumSamples();
 
@@ -313,6 +413,27 @@ void VOIDDrumEngineProcessor::processBlock(juce::AudioBuffer<float>& buffer,
 
     // Clear the reverb send buffer
     reverbSendBuffer.clear(0, numSamples);
+
+    // -- Drain UI-triggered pad events (lock-free FIFO) -----------------------
+    {
+        int numReady = uiTriggerFifo.getNumReady();
+        if (numReady > 0)
+            VOID_LOG("[processBlock] draining FIFO, numReady=" + juce::String(numReady));
+
+        const auto scope = uiTriggerFifo.read(numReady);
+        for (int i = 0; i < scope.blockSize1; ++i)
+        {
+            auto& evt = uiTriggerBuffer[static_cast<size_t>(scope.startIndex1 + i)];
+            VOID_LOG("[processBlock] FIFO event: pad=" + juce::String(evt.padIndex) + " vel=" + juce::String(evt.velocity));
+            handleNoteOn(evt.padIndex, evt.velocity);
+        }
+        for (int i = 0; i < scope.blockSize2; ++i)
+        {
+            auto& evt = uiTriggerBuffer[static_cast<size_t>(scope.startIndex2 + i)];
+            VOID_LOG("[processBlock] FIFO event: pad=" + juce::String(evt.padIndex) + " vel=" + juce::String(evt.velocity));
+            handleNoteOn(evt.padIndex, evt.velocity);
+        }
+    }
 
     // -- Copy MIDI mapping for this block (avoid lock contention) -------------
     void_drum::MIDIMapping currentMapping;

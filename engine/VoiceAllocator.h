@@ -101,6 +101,7 @@ struct Voice
     bool   oneShot       = true;    ///< true = one-shot, false = loop
     uint64_t age         = 0;       ///< Monotonic counter for voice stealing
     int    roundRobinIdx = 0;       ///< Which round-robin layer is playing
+    int    sampleEndPos  = -1;     ///< End position in samples (-1 = play to end)
 
     ADSREnvelope envelope;
 
@@ -116,6 +117,7 @@ struct Voice
         oneShot = true;
         age = 0;
         roundRobinIdx = 0;
+        sampleEndPos = -1;
         sample.reset();
         envelope.stage = ADSREnvelope::Stage::Idle;
         envelope.level = 0.0f;

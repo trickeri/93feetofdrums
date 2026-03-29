@@ -13,6 +13,7 @@
 #include "FolderScanner.h"
 #include <array>
 #include <memory>
+#include <juce_audio_basics/juce_audio_basics.h>
 
 // =========================================================================
 // VOIDDrumEngineProcessor
@@ -75,6 +76,13 @@ public:
     /** Load a sample onto a pad. Thread-safe (queues for background loading). */
     void loadSampleForPad(int padIndex, const juce::String& absolutePath,
                           const juce::String& sampleId);
+
+    /** Trigger a pad from the UI thread. Lock-free; queues the event for
+     *  the audio thread to pick up in the next processBlock call. */
+    void triggerPad(int padIndex, float velocity);
+
+    /** Set the sample start/end positions for a pad (normalised 0..1). */
+    void setPadSampleRange(int padIndex, float startNorm, float endNorm);
 
     /** Get the master output levels for UI metering. */
     const void_drum::StereoLevel& getMasterLevels() const { return mixBus.getMasterLevels(); }
@@ -158,6 +166,15 @@ private:
 
     // -- Round-robin counters per pad -----------------------------------------
     std::array<int, void_drum::NUM_PADS> roundRobinCounters {};
+
+    // -- Per-pad sample start/end positions (normalised 0..1) -----------------
+    std::array<std::atomic<float>, void_drum::NUM_PADS> padSampleStart {};
+    std::array<std::atomic<float>, void_drum::NUM_PADS> padSampleEnd {};
+
+    // -- Lock-free FIFO for UI-triggered pad hits (UI thread → audio thread) --
+    struct PadTriggerEvent { int padIndex; float velocity; };
+    juce::AbstractFifo uiTriggerFifo { 64 };
+    std::array<PadTriggerEvent, 64> uiTriggerBuffer {};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(VOIDDrumEngineProcessor)
 };

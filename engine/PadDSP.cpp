@@ -111,9 +111,10 @@ void PadDSP::renderVoices(std::array<Voice, MAX_VOICES>& voices,
                 break;
             }
 
-            // Check if sample is finished
+            // Check if sample is finished (respect end marker if set)
+            const int effectiveEnd = (voice.sampleEndPos > 0) ? voice.sampleEndPos : sampleLen;
             const int pos0 = static_cast<int>(voice.samplePosition);
-            if (pos0 >= sampleLen - 1)
+            if (pos0 >= effectiveEnd - 1)
             {
                 if (voice.oneShot)
                 {

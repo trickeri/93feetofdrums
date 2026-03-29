@@ -43,15 +43,41 @@ if (-not (Test-Path $destDir)) {
 
 $destPath = Join-Path $destDir "$pluginName.vst3"
 
+# Check if a DAW is running (which would lock the DLL)
+$dawProcesses = Get-Process | Where-Object {
+    $_.ProcessName -match 'Ableton|Live|FL Studio|FLEngine|Studio One|Bitwig|Reaper|Cubase|Nuendo|Pro Tools'
+} | Select-Object -ExpandProperty ProcessName -Unique
+if ($dawProcesses) {
+    Write-Host ""
+    Write-Host "WARNING: The following DAW(s) are running and may lock the plugin DLL:" -ForegroundColor Red
+    $dawProcesses | ForEach-Object { Write-Host "  - $_" -ForegroundColor Red }
+    Write-Host "Please close your DAW before installing, then re-run this script." -ForegroundColor Red
+    Write-Host ""
+    exit 1
+}
+
 # Remove old version if present
 if (Test-Path $destPath) {
     Write-Host "Removing previous installation..." -ForegroundColor Yellow
     Remove-Item -Path $destPath -Recurse -Force
+    Start-Sleep -Milliseconds 500
 }
 
-# Copy VST3 bundle
+# Copy VST3 bundle using robocopy for reliable directory copy
 Write-Host "Copying VST3 bundle..." -ForegroundColor Green
-Copy-Item -Path $vst3Bundle.FullName -Destination $destPath -Recurse -Force
+robocopy $vst3Bundle.FullName $destPath /E /NFL /NDL /NJH /NJS /nc /ns /np | Out-Null
+if ($LASTEXITCODE -ge 8) {
+    Write-Error "robocopy failed with exit code $LASTEXITCODE"
+    exit 1
+}
+# Verify the DLL was actually copied
+$srcDll = Join-Path $vst3Bundle.FullName "Contents\x86_64-win\VOID Drum Engine.vst3"
+$dstDll = Join-Path $destPath "Contents\x86_64-win\VOID Drum Engine.vst3"
+if ((Get-FileHash $srcDll -Algorithm MD5).Hash -ne (Get-FileHash $dstDll -Algorithm MD5).Hash) {
+    Write-Error "VERIFICATION FAILED: installed DLL does not match build output!"
+    exit 1
+}
+Write-Host "Verified: installed DLL matches build output." -ForegroundColor Green
 
 # Create sample folders in plugin data directory
 $pluginData = Join-Path $env:APPDATA "VOID Drum Engine"

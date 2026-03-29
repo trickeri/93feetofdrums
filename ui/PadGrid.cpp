@@ -200,6 +200,24 @@ void PadCell::paint(juce::Graphics& g)
     g.drawRect(ctrlBounds, 0.5f);
 }
 
+void PadCell::mouseDown(const juce::MouseEvent& e)
+{
+    // Only trigger if click is in the pad area (left ~72%), not the controls area
+    float controlsWidth = getWidth() * 0.28f;
+    float padAreaRight = getWidth() - controlsWidth;
+
+    if (e.getPosition().x < static_cast<int>(padAreaRight))
+    {
+        // Forward to parent PadGrid's mouseDown by converting coordinates
+        if (auto* parent = dynamic_cast<PadGrid*>(getParentComponent()))
+        {
+            auto parentEvent = e.getEventRelativeTo(parent);
+            parent->mouseDown(parentEvent);
+        }
+    }
+    // If click is in controls area, let it fall through to child components naturally
+}
+
 void PadCell::resized()
 {
     auto fullBounds = getLocalBounds();
